@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Simple To Do List</title>
+    <link rel="stylesheet" href="https://unpkg.com/buefy/dist/buefy.min.css">
+  </head>
+  <body>
+    <nav class="navbar is-success is-fixed-top">
+      <div class="navbar-brand">
+        <div class="navbar-item">
+          <p class="has-text-weight-bold has-text-centered">Simple To Do List</p>
+        </div>
+      </div>
+    </nav>
+    <section class="section">
+      <div class="container">
+        <div class="box" id="app">
+          <b-tabs position="is-centered" @input="loadData">
+            <b-tab-item label="To Do" value="todo">
+              <div class="is-hidden-touch">
+                <b-button
+                  type="is-success"
+                  icon-pack="fas"
+                  icon-left="plus"
+                  @click="promptCreateTodo">
+                  Create New
+                </a>
+              </div>
+              <form class="mt-3">
+                <todo
+                  v-for="(todo, index) in todoList"
+                  :key="todo.id"
+                  :value="todo.done"
+                  :data="todo"
+                  @input="setToDone(index, todo)">
+                </todo>
+                <div class="control" v-if="todoList.length === 0">
+                  <p class="has-text-centered has-text-grey">No ongoing tasks.</p>
+                </div>
+              </form>
+              <fab
+                custom-class="is-hidden-desktop px-5 m-5"
+                @click="promptCreateTodo">
+              </fab>
+            </b-tab-item>
+            <b-tab-item label="Done" value="done">
+              <form>
+                <todo
+                  v-for="(todo, index) in doneList"
+                  :key="todo.id"
+                  :value="todo.done"
+                  :data="todo"
+                  @input="undone(index, todo)">
+                </todo>
+                <div class="control" v-if="doneList.length === 0">
+                  <p class="has-text-centered has-text-grey">No done tasks.</p>
+                </div>
+              </form>
+            </b-tab-item>
+          </b-tabs>
+        </div>
+      </div>
+    </section>
+    <script defer src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://unpkg.com/vue"></script>
+    <script src="https://unpkg.com/http-vue-loader"></script>
+    <script src="https://unpkg.com/buefy/dist/buefy.min.js"></script>
+    <script type="text/javascript" src="./lib/index.js"></script>
+  </body>
+</html>
