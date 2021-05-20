@@ -34,7 +34,7 @@
                   :key="todo.id"
                   :value="todo.done"
                   :data="todo"
-                  @input="setToDone(index, todo)">
+                  @input="setToDone(index, todo, $event)">
                 </todo>
                 <div class="control" v-if="todoList.length === 0">
                   <p class="has-text-centered has-text-grey">No ongoing tasks.</p>
@@ -52,7 +52,7 @@
                   :key="todo.id"
                   :value="todo.done"
                   :data="todo"
-                  @input="undone(index, todo)">
+                  @input="undone(index, todo, $event)">
                 </todo>
                 <div class="control" v-if="doneList.length === 0">
                   <p class="has-text-centered has-text-grey">No done tasks.</p>

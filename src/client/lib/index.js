@@ -26,12 +26,25 @@ const app = new Vue({
         },
         trapFocus: true,
         onConfirm: async (text) => {
-          const response = await axios.post('/api/todo', { text })
-          this.todoList.push(response.data)
+          try {
+            const response = await axios.post('/api/todo', { text })
+            this.todoList.push(response.data)
+          } catch(e) {
+            const message = e.response ? e.response.data.error : e.message
+            this.$buefy.notification.open({
+              position: 'is-top',
+              type: 'is-danger',
+              message
+            })
+          }
         }
       })
     },
-    async setToDone(index, todo) {
+    async setToDone(index, todo, value) {
+      if(value === false) {
+        return
+      }
+
       this.todoList.splice(index, 1, { ...todo, done: true })
       try {
         const [ response ] = await Promise.all([
@@ -41,10 +54,19 @@ const app = new Vue({
         this.todoList.splice(index, 1)
         this.doneList.push(response.data)
       } catch(e) {
-        this.todoList.splice(index, 1, todo)
+        const message = e.response ? e.response.data.error : e.message
+        this.$buefy.notification.open({
+          position: 'is-top',
+          type: 'is-danger',
+          message
+        })
       }
     },
-    async undone(index, todo) {
+    async undone(index, todo, value) {
+      if(value === true) {
+        return
+      }
+
       this.doneList.splice(index, 1, { ...todo, done: false })
       try {
         const [ response ] = await Promise.all([
@@ -54,7 +76,12 @@ const app = new Vue({
         this.doneList.splice(index, 1)
         this.todoList.push(response.data)
       } catch(e) {
-        this.doneList.splice(index, 1, todo)
+        const message = e.response ? e.response.data.error : e.message
+        this.$buefy.notification.open({
+          position: 'is-top',
+          type: 'is-danger',
+          message
+        })
       }
     },
     _wait(delay = 5000) {
