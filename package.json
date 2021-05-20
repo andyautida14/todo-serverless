@@ -9,6 +9,7 @@
     "dynamodb:uninstall": "sls dynamodb remove",
     "dynamodb:start": "sls dynamodb start",
     "deploy": "sls deploy",
+    "invoke:local": "sls invoke local",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
@@ -24,6 +25,7 @@
     "@middy/core": "^2.2.0",
     "@middy/http-error-handler": "^2.2.0",
     "@middy/http-json-body-parser": "^2.2.0",
+    "aws-sdk": "^2.910.0",
     "dynamodb-toolbox": "^0.3.4",
     "ksuid": "^2.0.0",
     "serverless-dynamodb-client": "0.0.2"
