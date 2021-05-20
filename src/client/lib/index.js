@@ -5,6 +5,11 @@ const app = new Vue({
     doneList: []
   },
   mounted() {
+    if(window.location.protocol !== 'https:') {
+      // it is running locally
+      axios.defaults.baseURL = 'http://localhost:3000'
+    }
+
     this.loadData('todo')
   },
   methods: {
@@ -29,7 +34,10 @@ const app = new Vue({
     async setToDone(index, todo) {
       this.todoList.splice(index, 1, { ...todo, done: true })
       try {
-        const response = await axios.post(`/api/todo/${todo.id}/done`)
+        const [ response ] = await Promise.all([
+          axios.post(`/api/todo/${todo.id}/done`),
+          this._wait()
+        ])
         this.todoList.splice(index, 1)
         this.doneList.push(response.data)
       } catch(e) {
@@ -39,12 +47,18 @@ const app = new Vue({
     async undone(index, todo) {
       this.doneList.splice(index, 1, { ...todo, done: false })
       try {
-        const response = await axios.post(`/api/done/${todo.id}/undone`)
+        const [ response ] = await Promise.all([
+          axios.post(`/api/done/${todo.id}/undone`),
+          this._wait()
+        ])
         this.doneList.splice(index, 1)
         this.todoList.push(response.data)
       } catch(e) {
         this.doneList.splice(index, 1, todo)
       }
+    },
+    _wait(delay = 5000) {
+      return new Promise(resolve => setTimeout(resolve, delay))
     }
   },
   components: {

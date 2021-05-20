@@ -1,0 +1,133 @@
+service: todo-serverless
+useDotenv: true
+variablesResolutionMode: 20210219
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  region: ap-southeast-1
+  stackName: ${self:service}-${self:custom.stage}
+  apiGateway:
+    shouldStartNameWithService: true
+  lambdaHashingVersion: 20201221
+  environment:
+    DB_NAME: ${self:custom.dbName}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource:
+            - Fn::GetAtt:
+              - DynamoDBTable
+              - Arn
+
+custom:
+  stage: ${opt:stage, self:provider.stage, 'dev'}
+  dbName: todo-${self:custom.stage}
+  serverless-offline:
+    noPrependStageInUrl: true
+  dynamodb:
+    stages:
+      - dev
+    start:
+      dbPath: dynamodb-data
+      migrate: true
+  static:
+    path: ./src/client
+    port: 3001
+  fullstack:
+    domain: ${env:DOMAIN}
+    certificate: ${env:CERTIFICATE}
+    bucketName: ${self:provider.stackName}-frontend
+    distributionFolder: src/client
+    indexDocument: index.html
+    singlePageApp: true
+    priceClass: PriceClass_100
+    noConfirm: true
+
+plugins:
+  - fullstack-serverless
+  - serverless-dynamodb-local
+  - serverless-offline
+  # comment-out the next line while deploying due to
+  # https://github.com/iliasbhal/serverless-static/issues/3
+  # - serverless-static
+
+functions:
+  createTodo:
+    handler: src/api/functions/create-todo.handler
+    events:
+      - http:
+          method: post
+          path: /api/todo
+  getTodos:
+    handler: src/api/functions/get-todos.handler
+    events:
+      - http:
+          method: get
+          path: /api/todo
+  getDone:
+    handler: src/api/functions/get-done.handler
+    events:
+      - http:
+          method: get
+          path: /api/done
+  setToDone:
+    handler: src/api/functions/set-to-done.handler
+    events:
+      - http:
+          method: post
+          path: /api/todo/{id}/done
+  undone:
+    handler: src/api/functions/undone.handler
+    events:
+      - http:
+          method: post
+          path: /api/done/{id}/undone
+
+resources:
+  Resources:
+    DynamoDBTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.dbName}
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+          - AttributeName: GSI1PK
+            AttributeType: S
+          - AttributeName: GSI1SK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        GlobalSecondaryIndexes:
+          - IndexName: GSI1
+            KeySchema:
+              - AttributeName: GSI1PK
+                KeyType: HASH
+              - AttributeName: GSI1SK
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+
+package:
+  patterns:
+    - '!.dynamodb/**'
+    - '!dynamodb-data/**'
