@@ -57,7 +57,7 @@ plugins:
   - serverless-offline
   # comment-out the next line while deploying due to
   # https://github.com/iliasbhal/serverless-static/issues/3
-  # - serverless-static
+  - serverless-static
 
 functions:
   createTodo:
