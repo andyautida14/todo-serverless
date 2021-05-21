@@ -65,11 +65,27 @@ plugins:
   - fullstack-serverless
   - serverless-dynamodb-local
   - serverless-offline
+  - serverless-iam-roles-per-function
   # comment-out the next line while deploying due to
   # https://github.com/iliasbhal/serverless-static/issues/3
-  - serverless-static
+  # - serverless-static
 
 functions:
+  getConfig:
+    handler: src/api/functions/get-config.handler
+    environment:
+      STAGE: ${self:custom.stage}
+      IDENTITY_POOL_ID: !Ref CognitoIdentityPool
+      IOT_ENDPOINT_ADDRESS: !GetAtt IotEndpoint.IotEndpointAddress
+      API_GATEWAY_URL:
+        Fn::Join:
+          - ''
+          - - Ref: ApiGatewayRestApi
+            - '.execute-api.${self:provider.region}.amazonaws.com'
+    events:
+      - http:
+          method: get
+          path: /api/config
   createTodo:
     handler: src/api/functions/create-todo.handler
     environment:
@@ -106,24 +122,52 @@ functions:
       - http:
           method: post
           path: /api/done/{id}/undone
+  subscribe:
+    handler: src/api/functions/subscribe.handler
+    environment:
+      STAGE: ${self:custom.stage}
+    events:
+      - http:
+          method: post
+          path: /api/subscribe
+          authorizer: aws_iam
+          cors: true
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - iot:AttachPrincipalPolicy
+        Resource: '*'
   handleCreated:
     handler: src/api/functions/handle-created.handler
+    environment:
+      STAGE: ${self:custom.stage}
     events:
       - sns:
           arn: !Ref TodoCreatedTopic
           topicName: ${self:resources.Resources.TodoCreatedTopic.Properties.TopicName}
   handleDone:
     handler: src/api/functions/handle-done.handler
+    environment:
+      STAGE: ${self:custom.stage}
     events:
       - sns:
           arn: !Ref TodoCreatedTopic
           topicName: ${self:resources.Resources.TodoDoneTopic.Properties.TopicName}
   handleUndone:
     handler: src/api/functions/handle-undone.handler
+    environment:
+      STAGE: ${self:custom.stage}
     events:
       - sns:
           arn: !Ref TodoCreatedTopic
           topicName: ${self:resources.Resources.TodoUndoneTopic.Properties.TopicName}
+  iotEndpointProvider:
+    handler: src/api/functions/iot-endpoint-provider.handler
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - iot:DescribeEndpoint
+        Resource: '*'
 
 resources:
   Resources:
@@ -172,6 +216,109 @@ resources:
       Type: AWS::SNS::Topic
       Properties:
         TopicName: ${self:provider.stackName}-undone-topic
+    CognitoIdentityPool:
+      Type: AWS::Cognito::IdentityPool
+      Properties:
+        IdentityPoolName: ${self:provider.stackName}-identity-pool
+        AllowUnauthenticatedIdentities: true
+    UnauthenticatedRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Federated:
+                  - cognito-identity.amazonaws.com
+              Action:
+                - sts:AssumeRoleWithWebIdentity
+              Condition:
+                StringEquals:
+                  cognito-identity.amazonaws.com:aud: !Ref CognitoIdentityPool
+                ForAnyValue:StringLike:
+                  cognito-identity.amazonaws.com:amr: unauthenticated
+        ManagedPolicyArns:
+          - arn:aws:iam::aws:policy/AWSIoTDataAccess
+          - arn:aws:iam::aws:policy/AWSIoTConfigAccess
+        Policies:
+          - PolicyName: ${self:provider.stackName}-notif-subscribe-invoke-policy
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - execute-api:Invoke
+                  Resource:
+                    - Fn::Join:
+                      - ''
+                      - - 'arn:aws:execute-api:'
+                        - ${self:provider.region}
+                        - ':'
+                        - Ref: AWS::AccountId
+                        - ':'
+                        - Ref: ApiGatewayRestApi
+                        - '/${self:custom.stage}/POST/api/subscribe'
+    CognitoIdentityPoolRoleAttachment:
+      Type: AWS::Cognito::IdentityPoolRoleAttachment
+      Properties:
+        IdentityPoolId: !Ref CognitoIdentityPool
+        Roles:
+          unauthenticated: !GetAtt UnauthenticatedRole.Arn
+    IotEndpoint:
+      Type: Custom::Endpoint
+      Properties:
+        ServiceToken: !GetAtt IotEndpointProviderLambdaFunction.Arn
+    IotConnectPolicy:
+      Type: AWS::IoT::Policy
+      Properties:
+        PolicyName: ${self:provider.stackName}-connect-policy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+              - iot:Connect
+            Resource:
+              - '*'
+    IotSubscribePolicy:
+      Type: AWS::IoT::Policy
+      Properties:
+        PolicyName: ${self:provider.stackName}-subscribe-policy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+              - iot:Subscribe
+            Resource:
+              Fn::Join:
+                - ''
+                - - 'arn:aws:iot:'
+                  - ${self:provider.region}
+                  - ':'
+                  - !Ref AWS::AccountId
+                  - ':topicfilter/'
+                  - ${self:custom.stage}/todo/*
+    IotReceivePolicy:
+      Type: AWS::IoT::Policy
+      Properties:
+        PolicyName: ${self:provider.stackName}-receive-policy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+              - iot:Receive
+            Resource:
+              Fn::Join:
+                - ''
+                - - 'arn:aws:iot:'
+                  - ${self:provider.region}
+                  - ':'
+                  - !Ref AWS::AccountId
+                  - ':topic/'
+                  - ${self:custom.stage}/todo/*
 
 package:
   patterns:

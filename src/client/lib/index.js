@@ -1,3 +1,8 @@
+const aws4 = require('aws4-browser')
+const { Auth } = require('@aws-amplify/auth')
+const PubSub = require('@aws-amplify/pubsub')
+const { AWSIotProvider } = PubSub
+
 const app = new Vue({
   el: '#app',
   data: {
@@ -10,9 +15,53 @@ const app = new Vue({
       axios.defaults.baseURL = 'http://localhost:3000'
     }
 
+    this.subscribe()
     this.loadData('todo')
   },
   methods: {
+    async subscribe() {
+      const config = await this.getConfig()
+      Auth.configure(config.auth)
+      const credentials = await Auth.currentCredentials()
+
+      const path = `${config.stage}/api/subscribe`
+      const signedRequest = aws4.sign({
+        host: config.apiGatewayUrl,
+        method: 'POST',
+        url: `https://${config.apiGatewayUrl}/${path}`,
+        path
+      }, credentials)
+      await axios(signedRequest)
+
+      PubSub.addPluggable(new AWSIoTProvider({
+        aws_pubsub_region: config.auth.region,
+        aws_pubsub_endpoint: `wss://${config.iotEndpoint}/mqtt`
+      }))
+
+      const topic = `${config.stage}/todo/*`
+      PubSub.subscribe(topic).subscribe({
+        next: ({ value: todo }) => {
+          console.log(todo)
+          if(todo.done) {
+            this.removeTodo(todo)
+            this.addDone(todo)
+          } else {
+            this.addTodo(todo)
+            this.removeDone(done)
+          }
+        },
+        error: (err) => {
+          console.error('mqtt error:', errr)
+        },
+        close: () => {
+          console.log('mqtt closed')
+        }
+      })
+    },
+    async getConfig() {
+      const response = await axios.get('/api/config')
+      return response.data
+    },
     async loadData(type) {
       const response = await axios.get(`/api/${type}`)
       this[`${type}List`] = response.data
@@ -39,6 +88,30 @@ const app = new Vue({
           }
         }
       })
+    },
+    addTodo(todo) {
+      const index = this.todoList.findIndex(item => item.id === todo.id)
+      if(index === -1) {
+        this.todoList.push(todo)
+      }
+    },
+    removeTodo(todo) {
+      const index = this.todoList.findIndex(item => item.id === todo.id)
+      if(index >= 0) {
+        this.todoList.splice(index, 1)
+      }
+    },
+    addDone(todo) {
+      const index = this.doneList.findIndex(item => item.id === todo.id)
+      if(index === -1) {
+        this.doneList.push(todo)
+      }
+    },
+    removeDone(todo) {
+      const index = this.doneList.findIndex(item => item.id === todo.id)
+      if(index >= 0) {
+        this.doneList.splice(index, 1)
+      }
     },
     async setToDone(index, todo, value) {
       if(value === false) {

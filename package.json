@@ -9,25 +9,34 @@
     "dynamodb:uninstall": "sls dynamodb remove",
     "dynamodb:start": "sls dynamodb start",
     "deploy": "sls deploy",
+    "client:deploy": "sls client deploy",
     "invoke:local": "sls invoke local",
+    "remove": "sls remove",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@aws-amplify/auth": "^4.0.0",
+    "@aws-amplify/pubsub": "^4.0.0",
+    "aws4-browser": "^1.0.0",
     "fullstack-serverless": "^0.8.0",
     "serverless": "^2.41.2",
     "serverless-dynamodb-local": "^0.2.39",
+    "serverless-iam-roles-per-function": "^3.1.0",
     "serverless-offline": "^7.0.0",
     "serverless-static": "^1.0.0"
   },
   "dependencies": {
     "@middy/core": "^2.2.0",
+    "@middy/http-cors": "^2.2.0",
     "@middy/http-error-handler": "^2.2.0",
     "@middy/http-json-body-parser": "^2.2.0",
     "aws-sdk": "^2.910.0",
+    "axios": "^0.21.1",
     "dynamodb-toolbox": "^0.3.4",
     "ksuid": "^2.0.0",
+    "lodash.get": "^4.4.2",
     "serverless-dynamodb-client": "0.0.2"
   }
 }
