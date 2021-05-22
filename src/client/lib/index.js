@@ -1,13 +1,14 @@
 const aws4 = require('aws4-browser')
 const { Auth } = require('@aws-amplify/auth')
-const PubSub = require('@aws-amplify/pubsub')
-const { AWSIotProvider } = PubSub
+const { PubSub, AWSIoTProvider } = require('@aws-amplify/pubsub')
 
 const app = new Vue({
   el: '#app',
   data: {
     todoList: [],
-    doneList: []
+    doneList: [],
+    checkedTodo: [],
+    uncheckedDone: []
   },
   mounted() {
     if(window.location.protocol !== 'https:') {
@@ -31,6 +32,8 @@ const app = new Vue({
         url: `https://${config.apiGatewayUrl}/${path}`,
         path
       }, credentials)
+      delete signedRequest.headers['Host']
+      delete signedRequest.headers['Content-Length']
       await axios(signedRequest)
 
       PubSub.addPluggable(new AWSIoTProvider({
@@ -38,16 +41,15 @@ const app = new Vue({
         aws_pubsub_endpoint: `wss://${config.iotEndpoint}/mqtt`
       }))
 
-      const topic = `${config.stage}/todo/*`
+      const topic = `${config.stage}/todo/#`
       PubSub.subscribe(topic).subscribe({
         next: ({ value: todo }) => {
-          console.log(todo)
           if(todo.done) {
             this.removeTodo(todo)
             this.addDone(todo)
           } else {
             this.addTodo(todo)
-            this.removeDone(done)
+            this.removeDone(todo)
           }
         },
         error: (err) => {
@@ -89,6 +91,18 @@ const app = new Vue({
         }
       })
     },
+    removeCheckedTodo(todo) {
+      const index = this.checkedTodo.findIndex(item => item.id === todo.id)
+      if(index >= 0) {
+        this.checkedTodo.splice(index, 1)
+      }
+    },
+    removeUncheckedDone(todo) {
+      const index = this.uncheckedDone.findIndex(item => item.id === todo.id)
+      if(index >= 0) {
+        this.uncheckedDone.splice(index, 1)
+      }
+    },
     addTodo(todo) {
       const index = this.todoList.findIndex(item => item.id === todo.id)
       if(index === -1) {
@@ -118,21 +132,22 @@ const app = new Vue({
         return
       }
 
-      this.todoList.splice(index, 1, { ...todo, done: true })
+      this.todoList.splice(index, 1)
+      this.checkedTodo.push(todo)
       try {
-        const [ response ] = await Promise.all([
-          axios.post(`/api/todo/${todo.id}/done`),
-          this._wait()
-        ])
-        this.todoList.splice(index, 1)
-        this.doneList.push(response.data)
+        const response = await axios.post(`/api/todo/${todo.id}/done`)
+        this.addDone(response.data)
+        await this._wait()
       } catch(e) {
+        this.addTodo(todo)
         const message = e.response ? e.response.data.error : e.message
         this.$buefy.notification.open({
           position: 'is-top',
           type: 'is-danger',
           message
         })
+      } finally {
+        this.removeCheckedTodo(todo)
       }
     },
     async undone(index, todo, value) {
@@ -140,21 +155,22 @@ const app = new Vue({
         return
       }
 
-      this.doneList.splice(index, 1, { ...todo, done: false })
+      this.doneList.splice(index, 1)
+      this.uncheckedDone.push(todo)
       try {
-        const [ response ] = await Promise.all([
-          axios.post(`/api/done/${todo.id}/undone`),
-          this._wait()
-        ])
-        this.doneList.splice(index, 1)
-        this.todoList.push(response.data)
+        const response = await axios.post(`/api/done/${todo.id}/undone`)
+        this.addTodo(response.data)
+        this._wait()
       } catch(e) {
+        this.addDone(todo)
         const message = e.response ? e.response.data.error : e.message
         this.$buefy.notification.open({
           position: 'is-top',
           type: 'is-danger',
           message
         })
+      } finally {
+        this.removeUncheckedDone(todo)
       }
     },
     _wait(delay = 5000) {

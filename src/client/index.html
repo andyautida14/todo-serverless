@@ -30,6 +30,12 @@
               </div>
               <form class="mt-3">
                 <todo
+                  v-for="(todo, index) in checkedTodo"
+                  :key="todo.id + '-checked'"
+                  :value="true"
+                  :data="todo">
+                </todo>
+                <todo
                   v-for="(todo, index) in todoList"
                   :key="todo.id"
                   :value="todo.done"
@@ -47,6 +53,12 @@
             </b-tab-item>
             <b-tab-item label="Done" value="done">
               <form>
+                <todo
+                  v-for="(todo, index) in uncheckedDone"
+                  :key="todo.id + '-unchecked'"
+                  :value="false"
+                  :data="todo">
+                </todo>
                 <todo
                   v-for="(todo, index) in doneList"
                   :key="todo.id"

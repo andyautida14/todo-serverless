@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "@middy/core": "^2.2.0",
+    "@middy/error-logger": "^2.2.0",
     "@middy/http-cors": "^2.2.0",
     "@middy/http-error-handler": "^2.2.0",
     "@middy/http-json-body-parser": "^2.2.0",

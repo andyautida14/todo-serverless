@@ -141,26 +141,68 @@ functions:
     handler: src/api/functions/handle-created.handler
     environment:
       STAGE: ${self:custom.stage}
+      IOT_ENDPOINT_ADDRESS: !GetAtt IotEndpoint.IotEndpointAddress
     events:
       - sns:
           arn: !Ref TodoCreatedTopic
           topicName: ${self:resources.Resources.TodoCreatedTopic.Properties.TopicName}
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - iot:Publish
+        Resource:
+          Fn::Join:
+            - ''
+            - - 'arn:aws:iot:'
+              - ${self:provider.region}
+              - ':'
+              - !Ref AWS::AccountId
+              - ':topic/'
+              - ${self:custom.stage}/todo/*/created
   handleDone:
     handler: src/api/functions/handle-done.handler
     environment:
       STAGE: ${self:custom.stage}
+      IOT_ENDPOINT_ADDRESS: !GetAtt IotEndpoint.IotEndpointAddress
     events:
       - sns:
-          arn: !Ref TodoCreatedTopic
+          arn: !Ref TodoDoneTopic
           topicName: ${self:resources.Resources.TodoDoneTopic.Properties.TopicName}
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - iot:Publish
+        Resource:
+          Fn::Join:
+            - ''
+            - - 'arn:aws:iot:'
+              - ${self:provider.region}
+              - ':'
+              - !Ref AWS::AccountId
+              - ':topic/'
+              - ${self:custom.stage}/todo/*/done
   handleUndone:
     handler: src/api/functions/handle-undone.handler
     environment:
       STAGE: ${self:custom.stage}
+      IOT_ENDPOINT_ADDRESS: !GetAtt IotEndpoint.IotEndpointAddress
     events:
       - sns:
-          arn: !Ref TodoCreatedTopic
+          arn: !Ref TodoUndoneTopic
           topicName: ${self:resources.Resources.TodoUndoneTopic.Properties.TopicName}
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - iot:Publish
+        Resource:
+          Fn::Join:
+            - ''
+            - - 'arn:aws:iot:'
+              - ${self:provider.region}
+              - ':'
+              - !Ref AWS::AccountId
+              - ':topic/'
+              - ${self:custom.stage}/todo/*/undone
   iotEndpointProvider:
     handler: src/api/functions/iot-endpoint-provider.handler
     iamRoleStatements:

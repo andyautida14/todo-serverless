@@ -1,17 +1,15 @@
 const middy = require('@middy/core')
+const errorLogger = require('@middy/error-logger')
 const snsEvent = require('../lib/middlewares/sns-event')
-const errorHandler = require('../lib/middlewares/error-handler')
 const IotService = require('../lib/services/iot-service')
 
 async function handleCreated(event) {
   const todo = event.message
-  // await IotService.publish(`todo/${todo.id}/created`, todo)
-  console.log(event.message)
-  // TODO: publish to IoT
+  await IotService.publish(`todo/${todo.id}/created`, todo)
 }
 
 const handler = middy(handleCreated)
   .use(snsEvent())
-  .use(errorHandler())
+  .use(errorLogger())
 
 module.exports = { handler }
