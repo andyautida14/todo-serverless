@@ -13,6 +13,16 @@ npm run dynamodb:install
 
 ## Running locally
 
+Uncomment `serverless-static` plugin:
+
+```yml
+plugins:
+  ...
+  # comment-out the next line while deploying due to
+  # https://github.com/iliasbhal/serverless-static/issues/3
+  - serverless-static
+```
+
 ```bash
 npm start
 ```
